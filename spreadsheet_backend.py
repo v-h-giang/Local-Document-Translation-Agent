@@ -15,6 +15,8 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
 from excel_translate import EXCEL_EXTENSIONS
@@ -190,6 +192,43 @@ def _free_local_port():
         return sock.getsockname()[1]
 
 
+@contextmanager
+def _uno_workdir():
+    """Clean scratch data after the UNO processes exit.
+
+    Windows may briefly lock LibreOffice's profile/extension files even after
+    the worker has exited. Cleanup failure is not translation failure, since
+    the workbook and review reports have already been published.
+    """
+    temporary = Path(tempfile.mkdtemp(prefix="jpvn_uno_"))
+    try:
+        yield str(temporary)
+    finally:
+        last_error = None
+        for attempt in range(8):
+            try:
+                shutil.rmtree(temporary)
+                last_error = None
+                break
+            except FileNotFoundError:
+                last_error = None
+                break
+            except OSError as exc:
+                last_error = exc
+                if attempt < 7:
+                    time.sleep(0.5)
+        if last_error is not None:
+            print(
+                "WARNING: LibreOffice output was saved, but a temporary "
+                "profile file is still in use. Cleanup was deferred: "
+                f"{temporary} ({type(last_error).__name__}: {last_error})"
+            )
+            print(
+                "  Close any remaining LibreOffice processes associated "
+                "with this job, then remove only that temporary directory."
+            )
+
+
 def _libreoffice_translate(input_path, output_path, translate_func, max_chars, signature, glossary):
     input_path = Path(input_path).resolve()
     output_path = Path(output_path).resolve()
@@ -219,7 +258,7 @@ def _libreoffice_translate(input_path, output_path, translate_func, max_chars, s
 
     office = None
     worker = None
-    with tempfile.TemporaryDirectory(prefix="jpvn_uno_") as temporary:
+    with _uno_workdir() as temporary:
         profile_url = (Path(temporary) / "profile").resolve().as_uri()
         staging_path = Path(temporary) / ("source" + input_path.suffix.lower())
         shutil.copy2(input_path, staging_path)
