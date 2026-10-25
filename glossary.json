@@ -18,5 +18,7 @@
   "AWS": "AWS",
   "JSON": "JSON",
   "Excel": "Excel",
-  "Git": "Git"
+  "Git": "Git",
+  "HTC": "現行システム",
+  "HTM": "次期システム"
 }
