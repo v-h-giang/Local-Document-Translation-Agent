@@ -647,6 +647,23 @@ def main():
             "resumed_skipped": skipped, "unique_strings": len(cache),
         })
 
+        # This worker runs against a dedicated headless LibreOffice profile.
+        # Ask the desktop to shut down gracefully so Windows releases profile
+        # files such as extensions.pmap before the host removes that folder.
+        # The output is already complete; shutdown issues must not change the
+        # reported translation result.
+        try:
+            if not desktop.terminate():
+                send("log", text=(
+                    "LibreOffice did not terminate immediately; "
+                    "temporary profile cleanup may be deferred."
+                ))
+        except Exception as exc:
+            send("log", text=(
+                "LibreOffice shutdown warning (output already saved): "
+                f"{type(exc).__name__}: {exc}"
+            ))
+
     finally:
         if document is not None:
             try:
