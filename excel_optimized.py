@@ -161,7 +161,7 @@ def write_item(item, runs, stats, review):
         stats["objects"] += 1
 
 
-def flush(batch, cache, done, stats, translate_func, review, glossary):
+def flush(batch, cache, done, stats, translate_func, review, glossary, source_lang, target_lang):
     if not batch:
         return
     unique = []
@@ -169,7 +169,7 @@ def flush(batch, cache, done, stats, translate_func, review, glossary):
     for item in batch:
         for run in item["runs"]:
             text = run["text"]
-            if not translatable(text, literal_terms_from_glossary(glossary)):
+            if not translatable(text, literal_terms_from_glossary(glossary), source_lang, target_lang):
                 cache[text] = text
             elif text not in cache and text not in seen:
                 seen.add(text)
@@ -177,7 +177,8 @@ def flush(batch, cache, done, stats, translate_func, review, glossary):
 
     if unique:
         translated = translate_context_batch(
-            unique, translate_func, literal_terms_from_glossary(glossary)
+            unique, translate_func, literal_terms_from_glossary(glossary),
+            source_lang, target_lang
         )
         if len(translated) != len(unique):
             raise RuntimeError("COM batch produced wrong number of results")
@@ -199,7 +200,8 @@ def flush(batch, cache, done, stats, translate_func, review, glossary):
 
 
 def translate_excel_optimized(input_path, output_path, translate_func,
-                              max_chars=1200, signature="", glossary=None):
+                              max_chars=1200, signature="", glossary=None,
+                              source_lang="vi", target_lang="ja"):
     """COM equivalent of UNO sparse scan, dedup, contextual batches and resume."""
     input_path = Path(input_path).resolve()
     output_path = Path(output_path).resolve()
@@ -250,7 +252,8 @@ def translate_excel_optimized(input_path, output_path, translate_func,
                 nonlocal batch, pending_since_save
                 if not batch:
                     return
-                flush(batch, cache, done, stats, translate_func, review, glossary)
+                flush(batch, cache, done, stats, translate_func, review, glossary,
+                      source_lang, target_lang)
                 pending_since_save += len(batch)
                 batch = []
                 if pending_since_save >= CHECKPOINT_INTERVAL:
