@@ -352,3 +352,47 @@ Run regression tests:
 ```powershell
 .\.venv\Scripts\python.exe -m unittest test_rich_text_alignment.py -v
 ```
+
+
+## Multi-language TranslateGemma from run.bat
+
+\`run.bat\` remains the entry point. Double-clicking the file runs the default
+**Vietnamese to Japanese** direction (\`vi -> ja\`). You can override it from
+PowerShell or Command Prompt without calling Python manually:
+
+\`\`\`powershell
+.\run.bat --from ja --to vi
+.\run.bat --from en --to ja
+.\run.bat --from zh --to vi
+.\run.bat --from vi --to ja --model translategemma:12b
+.\run.bat --from ja --to en --glossary ".\glossaries\my-ja-en.json"
+\`\`\`
+
+You can still pass existing options such as \`--input-dir\`, \`--output-dir\`,
+\`--model\`, \`--max-chars\` or \`--help\` directly to \`run.bat\`.
+
+Pair glossaries are **directional**, not automatically reversed:
+
+\`\`\`text
+glossaries/
+  vi-ja.json     # Existing technical glossary, including HTC and HTM
+  ja-vi.json     # Optional Japanese -> Vietnamese glossary
+  en-ja.json     # Optional English -> Japanese glossary
+  ja-en.json     # Optional Japanese -> English glossary
+\`\`\`
+
+When a corresponding pair file does not exist, translation proceeds with
+an empty glossary. \`--glossary PATH\` explicitly overrides the default; a
+missing explicitly supplied file fails clearly rather than being ignored.
+The original root \`glossary.json\` remains for backward compatibility or
+manual use, but the new default is \`glossaries/vi-ja.json\`.
+
+The translation prompt, source-language text selection in UNO/Excel, and
+contextual batch prompts use \`--from\` and \`--to\`. The checkpoint signature
+includes both language codes and the selected glossary, so changing direction
+does not reuse translations from another language pair. Previous checkpoints
+with older signatures may need a fresh run.
+
+Language detection is heuristic, especially for mixed-language cells and
+languages with overlapping scripts. Inspect the output, review CSVs and
+technical terminology before use.
