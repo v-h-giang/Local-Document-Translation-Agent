@@ -10,9 +10,13 @@ import ollama
 
 from excel_translate import EXCEL_EXTENSIONS
 from spreadsheet_backend import translate_spreadsheet
+from language_pairs import (validate_pair, language_name, pair_glossary_path,
+                            DEFAULT_SOURCE_LANG, DEFAULT_TARGET_LANG)
 
 DEFAULT_MODEL = "translategemma:4b"
 MODEL = DEFAULT_MODEL
+SOURCE_LANG = DEFAULT_SOURCE_LANG
+TARGET_LANG = DEFAULT_TARGET_LANG
 NUM_CTX = 4096
 MAX_CHARS = 1200
 MAX_RETRIES = 2
@@ -197,8 +201,10 @@ def build_prompt(text, glossary, strict=False, mode="markdown"):
         raise ValueError(f"Unsupported translation mode: {mode}")
 
     prompt = (
-        "You are a professional Vietnamese (vi) to Japanese (ja-JP) translator. "
-        "Produce only the translated Japanese text, with no commentary.\n"
+        f"You are a professional translator from {language_name(SOURCE_LANG)} "
+        f"({SOURCE_LANG}) into {language_name(TARGET_LANG)} ({TARGET_LANG}). "
+        f"Produce only the {language_name(TARGET_LANG)} translation, "
+        "with no commentary.\n"
     )
 
     if mode == "markdown":
@@ -237,7 +243,8 @@ def build_prompt(text, glossary, strict=False, mode="markdown"):
 
     # TranslateGemma expects blank lines between task and source text.
     prompt += (
-        "Please translate the following Vietnamese text into Japanese:\n"
+        f"Please translate the following {language_name(SOURCE_LANG)} text "
+        f"into {language_name(TARGET_LANG)}:\n"
         "\n\n" + text
     )
     return prompt
@@ -448,7 +455,7 @@ def translate_directory(
     files = find_supported_files(input_dir)
 
     print("=" * 70)
-    print("Local VN to JP Translation Agent")
+    print(f"Local Translation Agent: {SOURCE_LANG} -> {TARGET_LANG}")
     print("=" * 70)
     print(f"Input directory  : {input_dir.resolve()}")
     print(f"Output directory : {output_dir.resolve()}")
@@ -502,6 +509,8 @@ def translate_directory(
                     max_chars=max_chars,
                     model=MODEL,
                     glossary=glossary,
+                    source_lang=SOURCE_LANG,
+                    target_lang=TARGET_LANG,
                 )
             else:
                 raise RuntimeError(
@@ -530,7 +539,7 @@ def translate_directory(
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Translate Markdown and Excel files Vietnamese -> Japanese "
+            "Translate Markdown and Excel files between configured languages "
             "from input directory to output directory with "
             "TranslateGemma through Ollama."
         )
@@ -546,9 +555,18 @@ def main():
         help="Output directory. Default: ./output",
     )
     parser.add_argument(
+        "--from", dest="source_lang", default=DEFAULT_SOURCE_LANG,
+        help="Source language (default: vi). Examples: ja, en, zh.",
+    )
+    parser.add_argument(
+        "--to", dest="target_lang", default=DEFAULT_TARGET_LANG,
+        help="Target language (default: ja). Examples: vi, en, ja.",
+    )
+    parser.add_argument(
         "--glossary",
-        default=str(DEFAULT_GLOSSARY),
-        help="Optional glossary JSON file. Default: ./glossary.json",
+        default=None,
+        help="Override directional glossary JSON; otherwise use "
+             "./glossaries/<from>-<to>.json if present.",
     )
     parser.add_argument(
         "--model",
@@ -567,15 +585,26 @@ def main():
 
     args = parser.parse_args()
 
-    global MODEL
+    global MODEL, SOURCE_LANG, TARGET_LANG
     MODEL = args.model
+    try:
+        SOURCE_LANG, TARGET_LANG = validate_pair(
+            args.source_lang, args.target_lang
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
 
     if args.max_chars < 300:
         parser.error("--max-chars must be at least 300")
 
-    glossary_path = args.glossary
-    if glossary_path and not Path(glossary_path).exists():
-        glossary_path = None
+    try:
+        glossary_path = pair_glossary_path(
+            BASE_DIR, SOURCE_LANG, TARGET_LANG, args.glossary
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        parser.error(str(exc))
+    print(f"Language pair      : {SOURCE_LANG} -> {TARGET_LANG}")
+    print(f"Glossary           : {glossary_path or '(none)'}")
 
     try:
         translate_directory(
