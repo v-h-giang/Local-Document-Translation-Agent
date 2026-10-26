@@ -422,7 +422,7 @@ def checkpoint_save(document, output, source_hash, processed, cache, stats, filt
     )
 
 
-def flush_batch(batch, cache, processed, stats, review):
+def flush_batch(batch, cache, processed, stats, review, source_lang, target_lang):
     if not batch:
         return
     unique = []
@@ -430,7 +430,7 @@ def flush_batch(batch, cache, processed, stats, review):
     for item in batch:
         for run in item["runs"]:
             source = run["text"]
-            if not translatable(source):
+            if not translatable(source, source_lang=source_lang, target_lang=target_lang):
                 cache[source] = source
             elif source not in cache and source not in seen:
                 unique.append(source)
@@ -514,6 +514,8 @@ def main():
     original = Path(sys.argv[4]).resolve()
     interval = int(sys.argv[5])
     signature = sys.argv[6]
+    source_lang = sys.argv[7]
+    target_lang = sys.argv[8]
     if interval < 1:
         raise RuntimeError("Checkpoint interval must be positive.")
 
@@ -556,7 +558,7 @@ def main():
             nonlocal batch, items_since_checkpoint
             if not batch:
                 return
-            flush_batch(batch, cache, processed, stats, review)
+            flush_batch(batch, cache, processed, stats, review, source_lang, target_lang)
             items_since_checkpoint += len(batch)
             batch = []
             if items_since_checkpoint >= interval:
