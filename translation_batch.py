@@ -9,7 +9,7 @@ import unicodedata
 BATCH_MAX_CHARS = 1100
 BATCH_MAX_ITEMS = 16
 # Bump when translation/cache semantics change.
-BATCH_ALGORITHM_VERSION = 3
+BATCH_ALGORITHM_VERSION = 4
 
 VIETNAMESE_ACCENTS = re.compile(
     r"[À-ỹĐđĂăÂâÊêÔôƠơƯư]", re.UNICODE
@@ -37,18 +37,30 @@ def literal_terms_from_glossary(glossary):
     )
 
 
-def translatable(value, literal_terms=()):
-    """Skip Japanese + Latin technical identifiers unless Vietnamese is present."""
+def translatable(value, literal_terms=(), source_lang="vi", target_lang="ja"):
+    """Conservative source-language gate; unknown languages defer to model."""
     if not value or not value.strip():
         return False
     text = unicodedata.normalize("NFC", value)
-    if not LATIN.search(text):
+    if any(_literal_pattern(t).fullmatch(text.strip()) for t in literal_terms):
         return False
-    if JAPANESE.search(text) and not VIETNAMESE_ACCENTS.search(text):
-        return False
-    if any(_literal_pattern(term).fullmatch(text.strip()) for term in literal_terms):
-        return False
-    return True
+    source = source_lang.split("-")[0].lower()
+    target = target_lang.split("-")[0].lower()
+    if source == "ja":
+        return bool(JAPANESE.search(text))
+    if source == "zh":
+        return bool(re.search(r"[\u3400-\u9fff]", text))
+    if source == "ko":
+        return bool(re.search(r"[\uac00-\ud7af]", text))
+    if source == "vi":
+        if JAPANESE.search(text) and not VIETNAMESE_ACCENTS.search(text):
+            return False
+        return bool(LATIN.search(text))
+    if source in ("en", "fr", "de", "es", "pt", "it", "nl", "pl"):
+        if target == "ja" and JAPANESE.search(text) and not LATIN.search(text):
+            return False
+        return bool(LATIN.search(text))
+    return any(unicodedata.category(ch).startswith("L") for ch in text)
 
 
 def _literal_counts(text, terms):
@@ -81,10 +93,10 @@ def _split_preserving_literals(source, terms):
     return selected
 
 
-def _translate_one(value, translate_func, literal_terms=()):
+def _translate_one(value, translate_func, literal_terms=(), source_lang="vi", target_lang="ja"):
     """Bounded requests; if a glossary identity token is lost, translate around it."""
     def plain(text):
-        if not text or not text.strip() or not translatable(text, literal_terms):
+        if not text or not text.strip() or not translatable(text, literal_terms, source_lang, target_lang):
             return text
         if len(text) <= BATCH_MAX_CHARS:
             translated = translate_func(text)
@@ -129,7 +141,7 @@ def _translate_one(value, translate_func, literal_terms=()):
     return result
 
 
-def translate_context_batch(texts, translate_func, literal_terms=()):
+def translate_context_batch(texts, translate_func, literal_terms=(), source_lang="vi", target_lang="ja"):
     """Translate text batches with strict 1:1 mapping and lossless escaping.
 
     JSON-string payloads handle backslashes, embedded newlines and quotes.
@@ -143,7 +155,7 @@ def translate_context_batch(texts, translate_func, literal_terms=()):
 
     def flush(group):
         if len(group) == 1:
-            return [_translate_one(group[0], translate_func, literal_terms)]
+            return [_translate_one(group[0], translate_func, literal_terms, source_lang, target_lang)]
 
         lines = [
             "[[SEG_{:03d}]] {}".format(
@@ -183,7 +195,7 @@ def translate_context_batch(texts, translate_func, literal_terms=()):
                 f"({type(exc).__name__}: {exc}); retrying individually."
             )
             return [
-                _translate_one(value, translate_func, literal_terms)
+                _translate_one(value, translate_func, literal_terms, source_lang, target_lang)
                 for value in group
             ]
 
