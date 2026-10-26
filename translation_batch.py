@@ -164,8 +164,8 @@ def translate_context_batch(texts, translate_func, literal_terms=(), source_lang
             for index, text in enumerate(group)
         ]
         prompt = (
-            "Translate the Vietnamese text inside each JSON string into "
-            "Japanese. Return exactly one line for every ID in order: "
+            f"Translate each JSON string from {source_lang} to {target_lang}. "
+            "Return exactly one line for every ID in order: "
             "[[SEG_NNN]] followed by a valid JSON string. Preserve ID values, "
             "technical names, backslashes, escapes and JSON syntax. "
             "No explanations.\n\n" + "\n".join(lines)
