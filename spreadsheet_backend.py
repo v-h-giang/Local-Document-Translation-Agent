@@ -229,7 +229,7 @@ def _uno_workdir():
             )
 
 
-def _libreoffice_translate(input_path, output_path, translate_func, max_chars, signature, glossary):
+def _libreoffice_translate(input_path, output_path, translate_func, max_chars, signature, glossary, source_lang, target_lang):
     input_path = Path(input_path).resolve()
     output_path = Path(output_path).resolve()
 
@@ -279,7 +279,7 @@ def _libreoffice_translate(input_path, output_path, translate_func, max_chars, s
             worker = subprocess.Popen(
                 [python_exe, "-u", str(worker_file), str(port),
                  str(staging_path), str(output_path), str(input_path),
-                 str(CHECKPOINT_INTERVAL), signature],
+                 str(CHECKPOINT_INTERVAL), signature, source_lang, target_lang],
                 env=environment, text=True, encoding="utf-8", errors="replace",
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, bufsize=1,
@@ -302,7 +302,7 @@ def _libreoffice_translate(input_path, output_path, translate_func, max_chars, s
                     try:
                         translations = translate_context_batch(
                             message["texts"], translate_func,
-                            literal_terms_from_glossary(glossary)
+                            literal_terms_from_glossary(glossary), source_lang, target_lang
                         )
                         reply = {"ok": True, "translations": translations}
                     except Exception as exc:
@@ -373,7 +373,8 @@ def translate_spreadsheet(input_path, output_path, translate_func, max_chars=120
             print("Spreadsheet backend : Microsoft Excel COM")
             return translate_excel_optimized(
                 input_path, output_path, translate_func, max_chars=max_chars,
-                signature=signature, glossary=glossary
+                signature=signature, glossary=glossary,
+                source_lang=source_lang, target_lang=target_lang
             )
         except Exception as exc:
             if choice == "excel":
@@ -385,4 +386,4 @@ def translate_spreadsheet(input_path, output_path, translate_func, max_chars=120
 
     print("Spreadsheet backend : LibreOffice UNO")
     return _libreoffice_translate(input_path, output_path, translate_func,
-                                  max_chars, signature, glossary)
+                                  max_chars, signature, glossary, source_lang, target_lang)
