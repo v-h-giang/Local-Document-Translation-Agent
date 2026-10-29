@@ -151,7 +151,8 @@ def check_results(case, workbook, original_hash, input_file, output_file, transl
     if case.get("no_model_calls"):
         require(translator.calls == 0, "Japanese-only text sent to model")
     shape_review = review_csv(output_file, ".shape_review.csv")
-    rich_review = review_csv(output_file, ".rich_text_review.csv")
+    rich_path = output_file.with_name(output_file.stem + ".rich_text_review.csv")
+    rich_review = review_csv(output_file, ".rich_text_review.csv") if rich_path.exists() else []
     if case.get("review_shape"):
         require(bool(shape_review), "shape shrink/resize was not logged")
     if case.get("translated") or case.get("shape_translated"):
