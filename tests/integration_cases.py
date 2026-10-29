@@ -38,8 +38,12 @@ CASES = [
      "translated": ["WBS!A1", "WBS!A2", "WBS!B1", "WBS!B2"],
      "require_batch": True},
     {"id": "03_japanese_unchanged", "sheets": [sheet(cells={
-        "A1": cell("現行システムの仕様"), "B1": cell("APIの設定")})],
-     "unchanged": ["WBS!A1", "WBS!B1"], "no_model_calls": True},
+        "A1": cell("現行システムの仕様"), "B1": cell("APIの設定"),
+        "C1": cell(runs=[{"text": "API", "bold": True},
+                           {"text": "の設定", "italic": True}]),
+        "D1": cell("WBS更新 / ID管理")})],
+     "unchanged": ["WBS!A1", "WBS!B1", "WBS!C1", "WBS!D1"],
+     "no_model_calls": True},
     {"id": "04_windows_path", "sheets": [sheet(cells={
         "A1": cell(r"Mở C:\new\test.xlsx trước khi chạy")})],
      "literal": {"WBS!A1": [r"C:\new\test.xlsx"]}},
