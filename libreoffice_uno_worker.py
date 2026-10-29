@@ -429,7 +429,17 @@ def flush_batch(batch, cache, processed, stats, review, source_lang, target_lang
     unique = []
     seen = set()
     for item in batch:
-        item["segments"] = split_styled_runs(item["runs"])
+        # Assess the original cell/shape before splitting rich-text portions.
+        # In vi->ja, "APIの設定" is Japanese text and must not become
+        # independently translatable "API" + Japanese runs.
+        if not translatable(item["text"], source_lang=source_lang,
+                            target_lang=target_lang):
+            item["segments"] = [
+                {"text": run["text"], "style": run["style"], "protected": True}
+                for run in item["runs"]
+            ]
+        else:
+            item["segments"] = split_styled_runs(item["runs"])
         for run in item["segments"]:
             source = run["text"]
             if run["protected"]:
