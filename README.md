@@ -428,3 +428,68 @@ Run the tests:
 \`\`\`powershell
 .\.venv\Scripts\python.exe -m unittest test_technical_literals.py -v
 \`\`\`
+
+
+## Automated XLSX integration tests
+
+Run the test suite **without a real Ollama server/model or customer workbook**.
+A local deterministic fake translator is used, but the spreadsheet backend,
+UNO worker, rich-text serialization, checkpoint and review reports are real.
+
+On Windows (LibreOffice installed):
+
+\`\`\`powershell
+git pull
+.\test_integration.bat                  # fast 5-workbook smoke test
+.\test_integration.bat --full           # all 20 synthetic workbooks
+.\test_integration.bat --smoke --keep   # keep input/output XLSX for debugging
+\`\`\`
+
+You may also run \`python tests/run_integration.py --full\`. The script
+automatically creates its own isolated LibreOffice profile and workbooks in
+\`tests/artifacts\`, then reads the **saved output XLSX files back** using
+LibreOffice UNO. It does not read your real \`input/\` or \`output/\` folders.
+
+The 20 cases cover:
+
+1. Basic translation
+2. Contextual batching and duplicates
+3. Already-Japanese cells skipped
+4. Windows paths (literal backslashes)
+5. URLs and query strings
+6. Japanese filenames ending in \`.xlsx\`
+7. Unix and relative paths
+8. Windows UNC paths
+9. Mixed bold/color/font-size rich text
+10. Strikethrough as historical deleted content
+11. Multiline italic/strikethrough rich text
+12. Formulas and numeric cells
+13. Merged cells and formatting
+14. Text-box shape translation
+15. Shape strikethrough and bold
+16. Shape fit and CSV review
+17. Multiple sheets and sparsely populated distant cells
+18. Quoted filenames containing spaces
+19. Japanese-to-Vietnamese translation
+20. Injected failure after a 75-cell checkpoint, then resume
+
+Reports are saved under \`tests/reports/<timestamp>_integration.json\`
+with per-case PASS/FAIL and translation call counts. If any case fails,
+the generated workbooks and worker logs are retained in \`tests/artifacts\`.
+The process exits nonzero on failures, so this can also be wired into CI.
+
+To explicitly test Microsoft Excel COM when desktop Excel is installed:
+
+\`\`\`powershell
+.\test_integration.bat --full --backend excel
+\`\`\`
+
+This is a separate optional run; it cannot pass on a LibreOffice-only PC.
+Synthetic text checks do not establish linguistic translation quality.
+For that, keep a separate manually reviewed Vietnamese/Japanese golden set.
+
+**Status:** Fixture-generation and LibreOffice-reopen flow was exercised
+with all 20 cases on a Linux LibreOffice installation. The full translation
+end-to-end suite still needs to run on the intended Windows machine. Do not
+interpret the existence of test code as evidence that all 20 translation
+cases already pass.
