@@ -171,7 +171,9 @@ def flush(batch, cache, done, stats, translate_func, review, glossary, source_la
         item["segments"] = split_styled_runs(item["runs"])
         for run in item["segments"]:
             text = run["text"]
-            if run["protected"] or not translatable(text, literal_terms_from_glossary(glossary), source_lang, target_lang):
+            if run["protected"]:
+                continue
+            if not translatable(text, literal_terms_from_glossary(glossary), source_lang, target_lang):
                 cache[text] = text
             elif text not in cache and text not in seen:
                 seen.add(text)
@@ -188,7 +190,7 @@ def flush(batch, cache, done, stats, translate_func, review, glossary, source_la
 
     for item in batch:
         translated_runs = [
-            {"text": cache[run["text"]], "style": run["style"]}
+            {"text": run["text"] if run["protected"] else cache[run["text"]], "style": run["style"]}
             for run in item["segments"]
         ]
         try:
