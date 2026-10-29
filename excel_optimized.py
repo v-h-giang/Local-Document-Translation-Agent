@@ -13,6 +13,7 @@ from excel_translate import (
     _write_cell_runs, _write_shape_runs, _fit_shape_text, _safe_get,
 )
 from translation_batch import translatable, translate_context_batch, literal_terms_from_glossary
+from technical_literals import split_styled_runs
 from shape_review import write_shape_review
 
 CHECKPOINT_INTERVAL = 75
@@ -167,9 +168,10 @@ def flush(batch, cache, done, stats, translate_func, review, glossary, source_la
     unique = []
     seen = set()
     for item in batch:
-        for run in item["runs"]:
+        item["segments"] = split_styled_runs(item["runs"])
+        for run in item["segments"]:
             text = run["text"]
-            if not translatable(text, literal_terms_from_glossary(glossary), source_lang, target_lang):
+            if run["protected"] or not translatable(text, literal_terms_from_glossary(glossary), source_lang, target_lang):
                 cache[text] = text
             elif text not in cache and text not in seen:
                 seen.add(text)
@@ -187,7 +189,7 @@ def flush(batch, cache, done, stats, translate_func, review, glossary, source_la
     for item in batch:
         translated_runs = [
             {"text": cache[run["text"]], "style": run["style"]}
-            for run in item["runs"]
+            for run in item["segments"]
         ]
         try:
             write_item(item, translated_runs, stats, review)
