@@ -11,6 +11,7 @@ import time
 import traceback
 import unicodedata
 from translation_batch import translatable
+from technical_literals import split_styled_runs
 from rich_text_alignment import align_rich_text_runs, RichTextAlignmentError
 import uuid
 from pathlib import Path
@@ -428,9 +429,10 @@ def flush_batch(batch, cache, processed, stats, review, source_lang, target_lang
     unique = []
     seen = set()
     for item in batch:
-        for run in item["runs"]:
+        item["segments"] = split_styled_runs(item["runs"])
+        for run in item["segments"]:
             source = run["text"]
-            if not translatable(source, source_lang=source_lang, target_lang=target_lang):
+            if run["protected"] or not translatable(source, source_lang=source_lang, target_lang=target_lang):
                 cache[source] = source
             elif source not in cache and source not in seen:
                 unique.append(source)
@@ -452,7 +454,7 @@ def flush_batch(batch, cache, processed, stats, review, source_lang, target_lang
     for item in batch:
         runs = [
             {"text": cache[run["text"]], "style": run["style"]}
-            for run in item["runs"]
+            for run in item["segments"]
         ]
         # Fail fast rather than publish an incomplete workbook.
         if "".join(x["text"] for x in runs) != item["text"]:
