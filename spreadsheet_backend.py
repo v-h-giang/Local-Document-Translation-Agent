@@ -360,7 +360,7 @@ def translate_spreadsheet(input_path, output_path, translate_func, max_chars=120
     signature = hashlib.sha256(json.dumps({
         "model": model, "glossary": glossary,
         "source_lang": source_lang, "target_lang": target_lang,
-        "batch_algorithm": BATCH_ALGORITHM_VERSION, "format_revision": 2,
+        "batch_algorithm": BATCH_ALGORITHM_VERSION, "format_revision": 3,
     }, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
     choice = os.environ.get("SPREADSHEET_BACKEND", "auto").strip().lower()
     if choice not in {"auto", "excel", "libreoffice"}:
