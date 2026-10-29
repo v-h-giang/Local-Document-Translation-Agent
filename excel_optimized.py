@@ -167,13 +167,24 @@ def flush(batch, cache, done, stats, translate_func, review, glossary, source_la
         return
     unique = []
     seen = set()
+    protected_terms = literal_terms_from_glossary(glossary)
     for item in batch:
-        item["segments"] = split_styled_runs(item["runs"])
+        # Gate the entire cell/shape BEFORE splitting rich formatting.
+        # This prevents Japanese + technical Latin tokens (API, WBS, ID)
+        # from triggering vi->ja translation for one isolated portion.
+        if not translatable(item["text"], protected_terms,
+                            source_lang, target_lang):
+            item["segments"] = [
+                {"text": run["text"], "style": run["style"], "protected": True}
+                for run in item["runs"]
+            ]
+        else:
+            item["segments"] = split_styled_runs(item["runs"])
         for run in item["segments"]:
             text = run["text"]
             if run["protected"]:
                 continue
-            if not translatable(text, literal_terms_from_glossary(glossary), source_lang, target_lang):
+            if not translatable(text, protected_terms, source_lang, target_lang):
                 cache[text] = text
             elif text not in cache and text not in seen:
                 seen.add(text)
@@ -181,7 +192,7 @@ def flush(batch, cache, done, stats, translate_func, review, glossary, source_la
 
     if unique:
         translated = translate_context_batch(
-            unique, translate_func, literal_terms_from_glossary(glossary),
+            unique, translate_func, protected_terms,
             source_lang, target_lang
         )
         if len(translated) != len(unique):
