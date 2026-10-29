@@ -396,3 +396,35 @@ with older signatures may need a fresh run.
 Language detection is heuristic, especially for mixed-language cells and
 languages with overlapping scripts. Inspect the output, review CSVs and
 technical terminology before use.
+
+
+## Protect URLs, paths, and filenames from translation
+
+Markdown, LibreOffice UNO, and Excel COM now identify technical literals
+**before** sending text to TranslateGemma. These are never translated:
+
+- Web URLs such as \`https://example.com/api?q=1\` or \`www.example.jp\`
+- Windows paths like \`C:\work\docs\report.xlsx\` and UNC shares
+- Unix and relative paths such as \`/opt/app/config.json\`,
+  \`./reports/daily.xlsx\`, \`reports/daily.xlsx\`
+- File names with extensions such as \`report.xlsx\`, \`config.json\`,
+  \`資料_20261024.xlsx\`, and quoted filenames containing spaces
+
+Only the surrounding ordinary text is translated. For spreadsheets, the
+literal-safe splitter uses original text offsets across multiple rich-text
+runs, preserving their individual styles (including strikethrough).
+Technical literals are also excluded from the deduplication cache to
+prevent a protected occurrence from suppressing translation elsewhere.
+Markdown uses its existing validated placeholders to preserve literals.
+The original file's name and output hierarchy remain unchanged.
+
+Protection is based on recognized syntax, so ambiguous slash-separated
+natural-language text can be treated as a path. A reviewer should check
+unusual/custom identifier patterns. Checkpoint signatures have a new
+format revision because the content transformation has changed.
+
+Run the tests:
+
+\`\`\`powershell
+.\.venv\Scripts\python.exe -m unittest test_technical_literals.py -v
+\`\`\`
