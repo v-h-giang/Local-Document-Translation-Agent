@@ -42,6 +42,17 @@ class LanguagePairTests(unittest.TestCase):
         self.assertFalse(translatable("API", ("API",), source_lang="en", target_lang="ja"))
         self.assertTrue(translatable("Review API", ("API",), source_lang="en", target_lang="ja"))
 
+    def test_whole_cell_japanese_with_latin_tokens(self):
+        # Rich-text portions must not override the source-language
+        # decision made for the complete cell or drawing text.
+        for value in ("APIの設定", "WBS更新 / ID管理", "現行システムの仕様"):
+            self.assertFalse(translatable(
+                value, source_lang="vi", target_lang="ja"))
+        self.assertTrue(translatable(
+            "cập nhật API", source_lang="vi", target_lang="ja"))
+        self.assertTrue(translatable(
+            "APIの設定", source_lang="ja", target_lang="vi"))
+
     def test_context_prompt_uses_selected_pair(self):
         def fake(text):
             self.assertIn("from ja to vi", text)
