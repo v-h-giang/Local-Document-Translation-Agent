@@ -10,6 +10,7 @@ import ollama
 
 from excel_translate import EXCEL_EXTENSIONS
 from spreadsheet_backend import translate_spreadsheet
+from technical_literals import mask_markdown_literals
 from language_pairs import (validate_pair, language_name, pair_glossary_path,
                             DEFAULT_SOURCE_LANG, DEFAULT_TARGET_LANG)
 
@@ -81,6 +82,9 @@ def protect_markdown(text):
             text,
         )
 
+    # URLs, paths and filenames must remain byte-for-byte intact, including
+    # names embedded inside otherwise translatable Markdown prose.
+    text = mask_markdown_literals(text, lambda value: add_protection(mapping, value))
     return text, mapping
 
 
