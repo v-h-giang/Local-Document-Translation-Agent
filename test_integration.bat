@@ -7,7 +7,11 @@ if not exist ".venv\Scripts\python.exe" (
 )
 rem Default: five key workbooks. For all twenty: test_integration.bat --full
 rem Optional: --backend excel (requires Microsoft Excel desktop)
-".venv\Scripts\python.exe" tests\run_integration.py %*
+if "%~1"=="" (
+    ".venv\Scripts\python.exe" tests\run_integration.py --smoke
+) else (
+    ".venv\Scripts\python.exe" tests\run_integration.py %*
+)
 set "TEST_EXIT_CODE=%ERRORLEVEL%"
 echo.
 echo Integration-test exit code: %TEST_EXIT_CODE%
