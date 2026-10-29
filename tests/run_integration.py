@@ -42,7 +42,10 @@ class FakeTranslator:
                 "[[SEG_{}]] {}".format(idx, json.dumps(self._one(json.loads(payload)),
                                                     ensure_ascii=False))
                 for idx, payload in matches)
-        return self._one(prompt)
+        # translate_chunk() wraps real input in instructions and two newlines.
+        # Return only its source payload, not the full instruction prompt.
+        source = prompt.split("\n\n")[-1]
+        return self._one(source)
 
 
 def sha(path):
